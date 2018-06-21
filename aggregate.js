@@ -1,10 +1,14 @@
 export const ReactiveAggregate = (sub, collection, pipeline, options) => {
   import { Promise } from 'meteor/promise';
+  import { _ } from 'meteor/underscore';
+
   const defaultOptions = {
     aggregationOptions: {},
     observeSelector: {},
     observeOptions: {},
-    clientCollection: collection._name
+    clientCollection: collection._name,
+    wait: 250,
+    waitStrategy: 'throttle'
   };
   options = _.extend(defaultOptions, options);
 
@@ -12,9 +16,7 @@ export const ReactiveAggregate = (sub, collection, pipeline, options) => {
   sub._ids = {};
   sub._iteration = 0;
 
-  const update = async () => {
-    if (initializing) return;
-    // add and update documents on the client
+  const doUpdate = async () => {
     try {
       const docs = await collection.rawCollection().aggregate(pipeline, options.aggregationOptions).toArray();
       docs.forEach(doc => {
@@ -39,6 +41,14 @@ export const ReactiveAggregate = (sub, collection, pipeline, options) => {
     }
   }
 
+  const waitAndUpdate = _[options.waitStrategy](doUpdate, options.wait);
+
+  const update = () => {
+    if (!initializing) {
+      waitAndUpdate();
+    }
+  };
+
   // track any changes on the collection used for the aggregation
   const query = collection.find(options.observeSelector, options.observeOptions);
   const handle = query.observeChanges({
@@ -53,7 +63,7 @@ export const ReactiveAggregate = (sub, collection, pipeline, options) => {
   // these are skipped using the initializing flag
   initializing = false;
   // send an initial result set to the client
-  Promise.await(update());
+  Promise.await(doUpdate());
   // mark the subscription as ready
   sub.ready();
 
@@ -62,4 +72,3 @@ export const ReactiveAggregate = (sub, collection, pipeline, options) => {
     handle.stop();
   });
 };
-

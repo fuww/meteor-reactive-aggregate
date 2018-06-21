@@ -33,6 +33,8 @@ Meteor.publish('nameOfPublication', function() {
   If none are given any change to the collection will cause the aggregation to be re-evaluated.
   (e.g. `{ limit: 10, sort: { createdAt: -1 } }`)
   - `clientCollection` defaults to the same name as the original collection, but can be overridden to send the results to a differently named client-side collection.
+  - `wait` (default: 250) number of millseconds to throttle or debounce aggregate calls when a bunch of document
+  - `waitStrategy` (default: throttle) strategy to wait (`'throttle'` or `'debounce'`)
 
 ## Quick Example
 
